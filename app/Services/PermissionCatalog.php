@@ -241,6 +241,10 @@ class PermissionCatalog
                         'label' => 'General Reports',
                         'description' => 'View and generate system reports',
                     ],
+                    'bir_reports' => [
+                        'label' => 'BIR Reports & Compliance',
+                        'description' => 'Generate BIR forms (2316, 1604-C), alphalists, and statutory remittance reports',
+                    ],
                 ],
             ],
         ];

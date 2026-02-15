@@ -12,21 +12,29 @@ class OvertimeRequest extends Model
     protected $fillable = [
         'employee_id',
         'overtime_date',
-        'hours',
+        'start_time',
+        'end_time',
+        'hours_worked',
+        'overtime_type',
         'reason',
+        'work_description',
+        'notes',
         'status',
         'approved_by',
         'approved_at',
         'rejection_reason',
         'included_in_payroll_run_id',
+        'is_paid',
+        'created_by',
     ];
 
     protected function casts(): array
     {
         return [
             'overtime_date' => 'date',
-            'hours' => 'decimal:2',
+            'hours_worked' => 'decimal:2',
             'approved_at' => 'datetime',
+            'is_paid' => 'boolean',
         ];
     }
 

@@ -25,7 +25,7 @@
                 </tr>
             </thead>
             <tbody>
-                @forelse($leaves as $leave)
+                @forelse($leaveRequests as $leave)
                 <tr>
                     <td class="font-medium text-slate-900">{{ ucfirst(str_replace('_', ' ', $leave->leave_type)) }}</td>
                     <td>{{ \Carbon\Carbon::parse($leave->start_date)->format('M d, Y') }}</td>
@@ -56,7 +56,7 @@
     </div>
 </div>
 
-@if(method_exists($leaves, 'links'))
-<div class="mt-4">{{ $leaves->withQueryString()->links() }}</div>
+@if(method_exists($leaveRequests, 'links'))
+<div class="mt-4">{{ $leaveRequests->withQueryString()->links() }}</div>
 @endif
 @endsection

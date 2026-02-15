@@ -3,11 +3,16 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Memo extends Model
 {
     protected $table = 'memos';
+
+    // DB has only updated_at and published_at, no created_at
+    const CREATED_AT = null;
+    const UPDATED_AT = 'updated_at';
 
     protected $fillable = [
         'memo_code',
@@ -19,6 +24,8 @@ class Memo extends Model
         'status',
         'allow_downloads',
         'published_at',
+        'deleted_at',
+        'deleted_by',
     ];
 
     protected function casts(): array

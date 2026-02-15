@@ -9,29 +9,35 @@
 
     // Permission checks
     $perms = $userPermissions ?? [];
-    $canAttendanceMgmt = ($perms['attendance.attendance_records'] ?? 'none') !== 'none';
-    $canOvertimeMgmt = ($perms['payroll.overtime'] ?? 'none') !== 'none';
+    $isSA = $isSystemAdmin ?? false;
+    $canAttendanceMgmt = $isSA || ($perms['attendance.attendance_records'] ?? 'none') !== 'none';
+    $canOvertimeMgmt = $isSA || ($perms['payroll.overtime'] ?? 'none') !== 'none';
     $leaveApproval = $perms['leave.leave_approval'] ?? 'none';
     $leaveBalances = $perms['leave.leave_balances'] ?? 'none';
     $leaveConfig = $perms['leave.leave_config'] ?? 'none';
-    $canLeaveMgmt = ($leaveApproval !== 'none' || $leaveBalances !== 'none' || $leaveConfig !== 'none');
-    $canPayrollMgmt = ($perms['payroll.payroll_runs'] ?? 'none') !== 'none';
-    $canEmployees = ($perms['hr_core.employees'] ?? 'none') !== 'none';
-    $canDepartments = ($perms['hr_core.departments'] ?? 'none') !== 'none';
-    $canPositions = ($perms['hr_core.positions'] ?? 'none') !== 'none';
-    $canDocuments = ($perms['documents.memos'] ?? 'none') !== 'none';
-    $canRecruitment = ($perms['hr_core.recruitment'] ?? 'none') !== 'none';
-    $canAudit = ($perms['system.audit_logs'] ?? 'none') !== 'none';
-    $canInventoryItems = ($perms['inventory.inventory_items'] ?? 'none') !== 'none';
-    $canPOS = ($perms['inventory.pos_transactions'] ?? 'none') !== 'none';
-    $canInventoryReports = ($perms['inventory.inventory_reports'] ?? 'none') !== 'none';
-    $canPrintServer = ($perms['inventory.print_server'] ?? 'none') !== 'none';
+    $canLeaveMgmt = $isSA || ($leaveApproval !== 'none' || $leaveBalances !== 'none' || $leaveConfig !== 'none');
+    $canPayrollMgmt = $isSA || ($perms['payroll.payroll_runs'] ?? 'none') !== 'none';
+    $canEmployees = $isSA || ($perms['hr_core.employees'] ?? 'none') !== 'none';
+    $canDepartments = $isSA || ($perms['hr_core.departments'] ?? 'none') !== 'none';
+    $canPositions = $isSA || ($perms['hr_core.positions'] ?? 'none') !== 'none';
+    $canDocuments = $isSA || ($perms['documents.memos'] ?? 'none') !== 'none' || ($perms['documents.documents'] ?? 'none') !== 'none';
+    $canDocumentsAdmin = $isSA || ($perms['documents.documents'] ?? 'none') !== 'none';
+    $canRecruitment = $isSA || ($perms['hr_core.recruitment'] ?? 'none') !== 'none';
+    $canAudit = $isSA || ($perms['system.audit_logs'] ?? 'none') !== 'none';
+    $canInventoryItems = $isSA || ($perms['inventory.inventory_items'] ?? 'none') !== 'none';
+    $canPOS = $isSA || ($perms['inventory.pos_transactions'] ?? 'none') !== 'none';
+    $canInventoryReports = $isSA || ($perms['inventory.inventory_reports'] ?? 'none') !== 'none';
+    $canPrintServer = $isSA || ($perms['inventory.print_server'] ?? 'none') !== 'none';
 
     $hasTimeAttendance = ($canAttendanceMgmt || $canOvertimeMgmt || $canLeaveMgmt || $canPayrollMgmt);
-    $hasPeopleOrg = ($canEmployees || $canDepartments || $canPositions || $canDocuments || $canRecruitment);
+    $hasPeopleOrg = ($canEmployees || $canDepartments || $canPositions || $canDocuments || $canDocumentsAdmin || $canRecruitment);
     $hasInventory = ($canInventoryItems || $canInventoryReports);
     $hasSalesPOS = $canPOS;
-    $hasAdminTools = ($isAdminRole || $isHrRole || $canAudit || $canPrintServer);
+    $hasInventory = ($canInventoryItems || $canInventoryReports);
+    $hasSalesPOS = $canPOS;
+    $canSystemSettings = $isSA || ($perms['system.system_settings'] ?? 'none') !== 'none';
+    $canUserMgmt = $isSA || ($perms['user_management.users'] ?? 'none') !== 'none';
+    $hasAdminTools = ($isAdminRole || $isHrRole || $canAudit || $canPrintServer || $canSystemSettings || $canUserMgmt);
 @endphp
 
 <aside id="sidebar" class="sidebar w-64 hidden md:flex md:flex-col transition-all duration-300">
@@ -75,7 +81,7 @@
                     <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.5 7.5L3 10l7.5 2.5L21 12l-10.5 4.5V21l3-3m-3-10.5V3"/></svg></span>
                     <span class="sidebar-label">Leaves</span>
                 </a>
-                <a href="#" class="nav-item" data-tip="Overtime Request">
+                <a href="{{ route('overtime.index') }}" class="nav-item {{ request()->routeIs('overtime.index', 'overtime.create') ? 'active' : '' }}" data-tip="Overtime Request">
                     <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></span>
                     <span class="sidebar-label">Overtime Request</span>
                 </a>
@@ -88,13 +94,21 @@
             </button>
             <div class="group-sep"></div>
             <div class="group-content space-y-1">
-                <a href="#" class="nav-item" data-tip="Personal Documents">
+                <a href="{{ route('documents.index') }}" class="nav-item {{ request()->routeIs('documents.index') ? 'active' : '' }}" data-tip="Personal Documents">
                     <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4h7l4 4v12a2 2 0 01-2 2H7a2 2 0 01-2-2V6a2 2 0 012-2z"/></svg></span>
                     <span class="sidebar-label">Personal Documents</span>
                 </a>
-                <a href="#" class="nav-item" data-tip="Memos">
+                <a href="{{ route('memos.index') }}" class="nav-item {{ request()->routeIs('memos.index', 'memos.show') ? 'active' : '' }}" data-tip="Memos">
                     <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 5h10M7 9h10M7 13h6m-7 6h12a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></span>
                     <span class="sidebar-label">Memos</span>
+                </a>
+                <a href="{{ route('corrections.index') }}" class="nav-item {{ request()->routeIs('corrections.*') ? 'active' : '' }}" data-tip="Data Corrections">
+                    <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span>
+                    <span class="sidebar-label">Data Corrections</span>
+                </a>
+                <a href="{{ route('privacy.consent') }}" class="nav-item {{ request()->routeIs('privacy.*') ? 'active' : '' }}" data-tip="Privacy Settings">
+                    <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></span>
+                    <span class="sidebar-label">Privacy Settings</span>
                 </a>
             </div>
         </div>
@@ -124,7 +138,7 @@
                 </a>
                 @endif
                 @if($canOvertimeMgmt)
-                <a href="#" class="nav-item" data-tip="Overtime Management">
+                <a href="{{ route('overtime.admin') }}" class="nav-item {{ request()->routeIs('overtime.admin') ? 'active' : '' }}" data-tip="Overtime Management">
                     <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></span>
                     <span class="sidebar-label">Overtime Management</span>
                 </a>
@@ -161,7 +175,7 @@
                 </a>
                 @endif
                 @if($canRecruitment)
-                <a href="#" class="nav-item" data-tip="Recruitment">
+                <a href="{{ route('recruitment.index') }}" class="nav-item {{ request()->routeIs('recruitment.*') ? 'active' : '' }}" data-tip="Recruitment">
                     <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 19a7 7 0 0114 0"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 8v6m3-3h-6"/></svg></span>
                     <span class="sidebar-label">Recruitment</span>
                 </a>
@@ -178,9 +192,15 @@
                     <span class="sidebar-label">Positions</span>
                 </a>
                 @endif
-                @if($canDocuments)
-                <a href="#" class="nav-item" data-tip="Memos">
+                @if($canDocumentsAdmin)
+                <a href="{{ route('documents.admin') }}" class="nav-item {{ request()->routeIs('documents.admin', 'documents.create', 'documents.edit') ? 'active' : '' }}" data-tip="Documents">
                     <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4h7l4 4v12a2 2 0 01-2 2H7a2 2 0 01-2-2V6a2 2 0 012-2z"/></svg></span>
+                    <span class="sidebar-label">Documents</span>
+                </a>
+                @endif
+                @if($canDocuments)
+                <a href="{{ route('memos.admin') }}" class="nav-item {{ request()->routeIs('memos.admin', 'memos.create', 'memos.edit') ? 'active' : '' }}" data-tip="Memos">
+                    <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 5h10M7 9h10M7 13h6m-7 6h12a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></span>
                     <span class="sidebar-label">Memos</span>
                 </a>
                 @endif
@@ -197,20 +217,30 @@
             </button>
             <div class="group-sep"></div>
             <div class="group-content space-y-1">
-                @if($canInventoryItems || $canInventoryReports)
-                <a href="#" class="nav-item" data-tip="Inventory Dashboard">
-                    <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg></span>
-                    <span class="sidebar-label">Dashboard</span>
-                </a>
-                @endif
                 @if($canInventoryItems)
-                <a href="#" class="nav-item" data-tip="Inventory">
+                <a href="{{ route('inventory.index') }}" class="nav-item {{ request()->routeIs('inventory.index', 'inventory.show', 'inventory.create', 'inventory.edit') ? 'active' : '' }}" data-tip="Items">
                     <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg></span>
                     <span class="sidebar-label">Items</span>
                 </a>
+                <a href="{{ route('inventory.categories') }}" class="nav-item {{ request()->routeIs('inventory.categories*') ? 'active' : '' }}" data-tip="Categories">
+                    <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg></span>
+                    <span class="sidebar-label">Categories</span>
+                </a>
+                <a href="{{ route('inventory.suppliers') }}" class="nav-item {{ request()->routeIs('inventory.suppliers*') ? 'active' : '' }}" data-tip="Suppliers">
+                    <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg></span>
+                    <span class="sidebar-label">Suppliers</span>
+                </a>
+                <a href="{{ route('inventory.locations') }}" class="nav-item {{ request()->routeIs('inventory.locations*') ? 'active' : '' }}" data-tip="Locations">
+                    <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></span>
+                    <span class="sidebar-label">Locations</span>
+                </a>
+                <a href="{{ route('inventory.purchase-orders') }}" class="nav-item {{ request()->routeIs('inventory.purchase-orders*') ? 'active' : '' }}" data-tip="Purchase Orders">
+                    <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></span>
+                    <span class="sidebar-label">Purchase Orders</span>
+                </a>
                 @endif
                 @if($canInventoryReports)
-                <a href="#" class="nav-item" data-tip="Inventory Reports">
+                <a href="{{ route('inventory.reports') }}" class="nav-item {{ request()->routeIs('inventory.reports') ? 'active' : '' }}" data-tip="Inventory Reports">
                     <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></span>
                     <span class="sidebar-label">Reports</span>
                 </a>
@@ -228,11 +258,11 @@
             </button>
             <div class="group-sep"></div>
             <div class="group-content space-y-1">
-                <a href="#" class="nav-item" data-tip="POS Terminal">
+                <a href="{{ route('inventory.pos') }}" class="nav-item {{ request()->routeIs('inventory.pos*') ? 'active' : '' }}" data-tip="POS Terminal">
                     <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z"/></svg></span>
                     <span class="sidebar-label">POS Terminal</span>
                 </a>
-                <a href="#" class="nav-item" data-tip="Transactions">
+                <a href="{{ route('inventory.transactions') }}" class="nav-item {{ request()->routeIs('inventory.transactions*') ? 'active' : '' }}" data-tip="Transactions">
                     <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg></span>
                     <span class="sidebar-label">Transactions</span>
                 </a>
@@ -249,22 +279,70 @@
             </button>
             <div class="group-sep"></div>
             <div class="group-content space-y-1">
-                @if($isAdminRole || $isHrRole)
-                <a href="{{ route('admin.index') }}" class="nav-item {{ request()->routeIs('admin.*') ? 'active' : '' }}" data-tip="Management Hub">
-                    <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M23 21v-2a4 4 0 00-3-3.87"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 3.13a4 4 0 010 7.75"/></svg></span>
+                @if($isAdminRole || $isHrRole || $isSA)
+                <a href="{{ route('admin.index') }}" class="nav-item {{ request()->routeIs('admin.index') ? 'active' : '' }}" data-tip="Management Hub">
+                    <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg></span>
                     <span class="sidebar-label">Management Hub</span>
                 </a>
                 @endif
-                @if($isAdminRole)
-                <a href="#" class="nav-item" data-tip="Access Control">
+                @if($canUserMgmt || $isSA)
+                <a href="{{ route('admin.users.index') }}" class="nav-item {{ request()->routeIs('admin.users.*') ? 'active' : '' }}" data-tip="User Management">
+                    <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M23 21v-2a4 4 0 00-3-3.87"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 3.13a4 4 0 010 7.75"/></svg></span>
+                    <span class="sidebar-label">User Management</span>
+                </a>
+                @endif
+                @if($canSystemSettings || $isSA)
+                <a href="{{ route('admin.branches.index') }}" class="nav-item {{ request()->routeIs('admin.branches.*') ? 'active' : '' }}" data-tip="Branches">
+                    <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg></span>
+                    <span class="sidebar-label">Branches</span>
+                </a>
+                <a href="{{ route('admin.payroll-config.index') }}" class="nav-item {{ request()->routeIs('admin.payroll-config.*') ? 'active' : '' }}" data-tip="Payroll Configuration">
+                    <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0"/><circle cx="12" cy="12" r="3"/></svg></span>
+                    <span class="sidebar-label">Payroll Config</span>
+                </a>
+                <a href="{{ route('admin.cutoff-periods.index') }}" class="nav-item {{ request()->routeIs('admin.cutoff-periods.*') ? 'active' : '' }}" data-tip="Cutoff Periods">
+                    <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3M3 11h18M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></span>
+                    <span class="sidebar-label">Cutoff Periods</span>
+                </a>
+                <a href="{{ route('admin.leave-defaults') }}" class="nav-item {{ request()->routeIs('admin.leave-defaults*', 'admin.leave-entitlements*') ? 'active' : '' }}" data-tip="Leave Settings">
+                    <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.5 7.5L3 10l7.5 2.5L21 12l-10.5 4.5V21l3-3m-3-10.5V3"/></svg></span>
+                    <span class="sidebar-label">Leave Settings</span>
+                </a>
+                <a href="{{ route('admin.work-schedules.index') }}" class="nav-item {{ request()->routeIs('admin.work-schedules.*') ? 'active' : '' }}" data-tip="Work Schedules">
+                    <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></span>
+                    <span class="sidebar-label">Work Schedules</span>
+                </a>
+                <a href="{{ route('admin.approval-workflow.index') }}" class="nav-item {{ request()->routeIs('admin.approval-workflow.*') ? 'active' : '' }}" data-tip="Approval Workflow">
+                    <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></span>
+                    <span class="sidebar-label">Approval Workflow</span>
+                </a>
+                <a href="{{ route('admin.bir-reports.index') }}" class="nav-item {{ request()->routeIs('admin.bir-reports.*') ? 'active' : '' }}" data-tip="BIR Reports">
+                    <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></span>
+                    <span class="sidebar-label">BIR Reports</span>
+                </a>
+                <a href="{{ route('admin.corrections.index') }}" class="nav-item {{ request()->routeIs('admin.corrections.*') ? 'active' : '' }}" data-tip="Data Corrections">
+                    <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span>
+                    <span class="sidebar-label">Data Corrections</span>
+                </a>
+                <a href="{{ route('admin.privacy-consents.index') }}" class="nav-item {{ request()->routeIs('admin.privacy-consents.*') ? 'active' : '' }}" data-tip="Privacy Consents">
+                    <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></span>
+                    <span class="sidebar-label">Privacy Consents</span>
+                </a>
+                <a href="{{ route('admin.system.index') }}" class="nav-item {{ request()->routeIs('admin.system.*') ? 'active' : '' }}" data-tip="System Monitor">
+                    <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></span>
+                    <span class="sidebar-label">System Monitor</span>
+                </a>
+                @endif
+                @if($isAdminRole || $isSA)
+                <a href="{{ route('positions.index') }}" class="nav-item" data-tip="Access Control">
                     <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg></span>
                     <span class="sidebar-label">Access Control</span>
                 </a>
                 @endif
-                @if($isAdminRole || $canAudit)
-                <a href="#" class="nav-item" data-tip="System Management">
+                @if($isAdminRole || $canAudit || $isSA)
+                <a href="{{ route('audit.index') }}" class="nav-item {{ request()->routeIs('audit.*') ? 'active' : '' }}" data-tip="Audit Trail">
                     <span class="nav-icon"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg></span>
-                    <span class="sidebar-label">System Management</span>
+                    <span class="sidebar-label">Audit Trail</span>
                 </a>
                 @endif
             </div>

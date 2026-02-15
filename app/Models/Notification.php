@@ -16,7 +16,6 @@ class Notification extends Model
         'message',
         'payload',
         'is_read',
-        'read_at',
     ];
 
     protected function casts(): array
@@ -24,7 +23,6 @@ class Notification extends Model
         return [
             'payload' => 'array',
             'is_read' => 'boolean',
-            'read_at' => 'datetime',
         ];
     }
 

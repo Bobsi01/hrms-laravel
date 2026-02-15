@@ -9,16 +9,21 @@ class DepartmentSupervisor extends Model
 {
     protected $table = 'department_supervisors';
 
+    public $timestamps = false;
+
     protected $fillable = [
         'department_id',
-        'employee_id',
-        'is_primary',
+        'supervisor_user_id',
+        'is_override',
+        'assigned_by',
+        'assigned_at',
     ];
 
     protected function casts(): array
     {
         return [
-            'is_primary' => 'boolean',
+            'is_override' => 'boolean',
+            'assigned_at' => 'datetime',
         ];
     }
 
@@ -27,8 +32,8 @@ class DepartmentSupervisor extends Model
         return $this->belongsTo(Department::class);
     }
 
-    public function employee(): BelongsTo
+    public function supervisor(): BelongsTo
     {
-        return $this->belongsTo(Employee::class);
+        return $this->belongsTo(User::class, 'supervisor_user_id');
     }
 }

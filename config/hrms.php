@@ -84,4 +84,22 @@ return [
     */
     'remember_me_lifetime' => 2592000, // 30 days
 
+    /*
+    |--------------------------------------------------------------------------
+    | Data Retention Policy (RA 10173 & BIR Compliance)
+    |--------------------------------------------------------------------------
+    | Retention periods in years. Payroll/tax records require 10 years per BIR.
+    | Employment records retained for duration + post-employment grace period.
+    | Audit logs retained for compliance verification purposes.
+    */
+    'retention' => [
+        'payroll_records'    => 10, // BIR requirement: 10 years
+        'tax_records'        => 10, // BIR requirement: 10 years
+        'employment_records' => 5,  // Post-employment retention (years after separation)
+        'audit_logs'         => 7,  // Audit trail retention
+        'attendance_records' => 5,  // DTR / attendance data
+        'leave_records'      => 5,  // Leave history
+        'consent_records'    => 10, // RA 10173: retain consent proof
+    ],
+
 ];

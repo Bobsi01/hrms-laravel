@@ -14,6 +14,8 @@ class Document extends Model
         'doc_type',
         'file_path',
         'created_by',
+        'deleted_at',
+        'deleted_by',
     ];
 
     public function creator(): BelongsTo

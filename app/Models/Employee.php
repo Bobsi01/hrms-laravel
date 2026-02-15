@@ -25,8 +25,17 @@ class Employee extends Model
         'employment_type',
         'status',
         'salary',
+        'date_of_birth',
+        'gender',
+        'nationality',
+        'marital_status',
+        'emergency_contact_name',
+        'emergency_contact_phone',
+        'bio',
         'profile_photo_path',
         'profile_photo_updated_at',
+        'deleted_at',
+        'deleted_by',
     ];
 
     protected function casts(): array

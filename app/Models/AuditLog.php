@@ -14,7 +14,26 @@ class AuditLog extends Model
         'action',
         'details',
         'details_raw',
+        'ip_address',
+        'user_agent',
+        'module',
+        'action_type',
+        'target_type',
+        'target_id',
+        'old_values',
+        'new_values',
+        'status',
+        'employee_id',
+        'severity',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'old_values' => 'array',
+            'new_values' => 'array',
+        ];
+    }
 
     public function user(): BelongsTo
     {
