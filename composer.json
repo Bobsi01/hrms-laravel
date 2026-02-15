@@ -41,13 +41,7 @@
             "npm run build"
         ],
         "post-install-cmd": [
-            "@php artisan package:discover --ansi",
-            "@php -r \"if (getenv('HEROKU')) { passthru('php artisan config:cache'); passthru('php artisan route:cache'); passthru('php artisan view:cache'); }\""
-        ],
-        "compile": [
-            "@php artisan config:cache",
-            "@php artisan route:cache",
-            "@php artisan view:cache"
+            "@php artisan package:discover --ansi"
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
