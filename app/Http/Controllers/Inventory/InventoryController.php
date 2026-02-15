@@ -56,9 +56,9 @@ class InventoryController extends Controller
         // Stock status filter
         if ($stockStatus = $request->input('stock_status')) {
             match ($stockStatus) {
-                'low' => $query->whereColumn('inv_items.quantity_on_hand', '<=', 'inv_items.reorder_level')
-                               ->where('inv_items.quantity_on_hand', '>', 0),
-                'out' => $query->where('inv_items.quantity_on_hand', '<=', 0),
+                'low' => $query->whereColumn('inv_items.qty_on_hand', '<=', 'inv_items.reorder_level')
+                               ->where('inv_items.qty_on_hand', '>', 0),
+                'out' => $query->where('inv_items.qty_on_hand', '<=', 0),
                 'expired' => $query->where('inv_items.expiry_date', '<', now()->toDateString()),
                 'expiring' => $query->whereBetween('inv_items.expiry_date', [now()->toDateString(), now()->addDays(30)->toDateString()]),
                 default => null,
@@ -72,15 +72,18 @@ class InventoryController extends Controller
         $locations = DB::table('inv_locations')->where('is_active', true)->orderBy('name')->get();
 
         // Stock stats
+        $totalItems = DB::table('inv_items')->where('is_active', true)->count();
+        $lowStock = DB::table('inv_items')->where('is_active', true)
+            ->whereColumn('qty_on_hand', '<=', 'reorder_level')
+            ->where('qty_on_hand', '>', 0)->count();
+        $outOfStock = DB::table('inv_items')->where('is_active', true)
+            ->where('qty_on_hand', '<=', 0)->count();
+
         $stats = [
-            'total' => DB::table('inv_items')->where('is_active', true)->count(),
-            'low' => DB::table('inv_items')->where('is_active', true)
-                ->whereColumn('quantity_on_hand', '<=', 'reorder_level')
-                ->where('quantity_on_hand', '>', 0)->count(),
-            'out' => DB::table('inv_items')->where('is_active', true)
-                ->where('quantity_on_hand', '<=', 0)->count(),
-            'expiring' => DB::table('inv_items')->where('is_active', true)
-                ->whereBetween('expiry_date', [now()->toDateString(), now()->addDays(30)->toDateString()])->count(),
+            'total' => $totalItems,
+            'in_stock' => $totalItems - $lowStock - $outOfStock,
+            'low_stock' => $lowStock,
+            'out_of_stock' => $outOfStock,
         ];
 
         return view('inventory.index', compact('items', 'categories', 'suppliers', 'locations', 'stats'));
@@ -123,7 +126,7 @@ class InventoryController extends Controller
         $initialQty = $validated['initial_qty'] ?? 0;
         unset($validated['initial_qty']);
 
-        $validated['quantity_on_hand'] = $initialQty;
+        $validated['qty_on_hand'] = $initialQty;
         $validated['is_active'] = true;
         $validated['created_by'] = auth()->id();
         $validated['created_at'] = now();
@@ -247,7 +250,7 @@ class InventoryController extends Controller
         ]);
 
         // Update stock
-        DB::table('inv_items')->where('id', $item)->increment('quantity_on_hand', $validated['quantity']);
+        DB::table('inv_items')->where('id', $item)->increment('qty_on_hand', $validated['quantity']);
 
         $this->audit->actionLog('inventory', 'stock_adjustment', 'success', [
             'item_id' => $item,

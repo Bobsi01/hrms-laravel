@@ -105,12 +105,12 @@
                         @if($item->description)<div class="text-xs text-slate-400">{{ Str::limit($item->description, 40) }}</div>@endif
                     </td>
                     <td class="text-sm">{{ $item->category_name ?? '—' }}</td>
-                    <td class="font-medium">{{ number_format($item->quantity_on_hand ?? 0) }}</td>
+                    <td class="font-medium">{{ number_format($item->qty_on_hand ?? 0) }}</td>
                     <td class="text-sm">₱{{ number_format($item->unit_price ?? 0, 2) }}</td>
                     <td class="text-sm text-slate-500">₱{{ number_format($item->cost_price ?? 0, 2) }}</td>
                     <td>
                         @php
-                            $qty = $item->quantity_on_hand ?? 0;
+                            $qty = $item->qty_on_hand ?? 0;
                             $reorder = $item->reorder_level ?? 0;
                         @endphp
                         @if($qty <= 0)

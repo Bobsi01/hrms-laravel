@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Branch;
 use App\Models\User;
 use App\Services\AuditService;
 use App\Services\PermissionService;
@@ -25,13 +26,14 @@ class ApprovalWorkflowController extends Controller
             ->get();
 
         $users = User::where('status', 'active')->orderBy('full_name')->get(['id', 'full_name', 'email']);
+        $branches = Branch::orderBy('name')->get(['id', 'name']);
 
         $stats = [
             'active' => $approvers->where('active', true)->count(),
             'total' => $approvers->count(),
         ];
 
-        return view('admin.approval-workflow.index', compact('approvers', 'users', 'stats'));
+        return view('admin.approval-workflow.index', compact('approvers', 'users', 'branches', 'stats'));
     }
 
     public function store(Request $request)

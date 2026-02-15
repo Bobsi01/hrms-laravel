@@ -132,7 +132,7 @@
                         <tr>
                             <td class="font-medium">{{ $ei->name }}</td>
                             <td class="text-xs font-mono text-slate-400">{{ $ei->sku ?? '—' }}</td>
-                            <td>{{ number_format($ei->quantity_on_hand ?? 0) }}</td>
+                            <td>{{ number_format($ei->qty_on_hand ?? 0) }}</td>
                             <td>{{ \Carbon\Carbon::parse($ei->expiry_date)->format('M d, Y') }}</td>
                             <td>
                                 @if($daysLeft <= 0)

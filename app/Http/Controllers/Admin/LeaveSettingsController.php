@@ -25,21 +25,25 @@ class LeaveSettingsController extends Controller
         $systemDefaults = config('hrms.leave_entitlements', []);
 
         // Global overrides from leave_entitlements table
-        $globalOverrides = DB::table('leave_entitlements')
+        $globalDefaults = DB::table('leave_entitlements')
             ->where('scope_type', 'global')
             ->whereNull('scope_id')
-            ->pluck('days_entitled', 'leave_type')
+            ->pluck('days', 'leave_type')
             ->toArray();
 
-        // Department overrides
+        // Department overrides — nested associative array [dept_id][leave_type] => days
         $departments = DB::table('departments')->orderBy('name')->get();
-        $deptOverrides = DB::table('leave_entitlements')
+        $rawDeptOverrides = DB::table('leave_entitlements')
             ->where('scope_type', 'department')
-            ->get()
-            ->groupBy('scope_id');
+            ->get();
+
+        $deptOverrides = [];
+        foreach ($rawDeptOverrides as $row) {
+            $deptOverrides[$row->scope_id][$row->leave_type] = $row->days;
+        }
 
         return view('admin.leave-settings.defaults', compact(
-            'leaveTypes', 'systemDefaults', 'globalOverrides', 'departments', 'deptOverrides'
+            'leaveTypes', 'systemDefaults', 'globalDefaults', 'departments', 'deptOverrides'
         ));
     }
 
@@ -47,13 +51,13 @@ class LeaveSettingsController extends Controller
     {
         $leaveTypes = $this->getLeaveTypes();
 
-        foreach ($leaveTypes as $type) {
-            $val = $request->input("leave_{$type}");
+        foreach (array_keys($leaveTypes) as $type) {
+            $val = $request->input("defaults.{$type}");
             if ($val !== null && $val !== '') {
                 DB::table('leave_entitlements')->upsert(
-                    ['leave_type' => $type, 'scope_type' => 'global', 'scope_id' => null, 'days_entitled' => (float) $val],
+                    ['leave_type' => $type, 'scope_type' => 'global', 'scope_id' => null, 'days' => (float) $val],
                     ['leave_type', 'scope_type'],
-                    ['days_entitled']
+                    ['days']
                 );
             } else {
                 DB::table('leave_entitlements')
@@ -66,7 +70,7 @@ class LeaveSettingsController extends Controller
 
         $this->audit->actionLog('leave_settings', 'update_globals', 'success');
 
-        return redirect()->route('admin.leave-defaults.index')
+        return redirect()->route('admin.leave-defaults')
             ->with('success', 'Global leave defaults updated.');
     }
 
@@ -75,13 +79,13 @@ class LeaveSettingsController extends Controller
         $deptId = $request->input('department_id');
         $leaveTypes = $this->getLeaveTypes();
 
-        foreach ($leaveTypes as $type) {
-            $val = $request->input("leave_{$type}");
+        foreach (array_keys($leaveTypes) as $type) {
+            $val = $request->input("overrides.{$type}");
             if ($val !== null && $val !== '') {
                 DB::table('leave_entitlements')->upsert(
-                    ['leave_type' => $type, 'scope_type' => 'department', 'scope_id' => $deptId, 'days_entitled' => (float) $val],
+                    ['leave_type' => $type, 'scope_type' => 'department', 'scope_id' => $deptId, 'days' => (float) $val],
                     ['leave_type', 'scope_type', 'scope_id'],
-                    ['days_entitled']
+                    ['days']
                 );
             } else {
                 DB::table('leave_entitlements')
@@ -96,7 +100,7 @@ class LeaveSettingsController extends Controller
             'department_id' => $deptId,
         ]);
 
-        return redirect()->route('admin.leave-defaults.index')
+        return redirect()->route('admin.leave-defaults')
             ->with('success', 'Department leave overrides updated.');
     }
 
@@ -108,9 +112,15 @@ class LeaveSettingsController extends Controller
         $tab = $request->input('tab', 'balances');
         $leaveTypes = $this->getLeaveTypes();
 
+        // Default empty values for both tabs (view renders both panels)
+        $policies = collect();
+        $employees = collect();
+        $balances = [];
+        $search = $request->input('search');
+
         if ($tab === 'policies') {
             $policies = LeaveFilingPolicy::orderBy('leave_type')->get()->keyBy('leave_type');
-            return view('admin.leave-settings.entitlements', compact('tab', 'leaveTypes', 'policies'));
+            return view('admin.leave-settings.entitlements', compact('tab', 'leaveTypes', 'policies', 'employees', 'balances', 'search'));
         }
 
         // Balances tab
@@ -138,7 +148,7 @@ class LeaveSettingsController extends Controller
         $globalOverrides = DB::table('leave_entitlements')
             ->where('scope_type', 'global')
             ->whereNull('scope_id')
-            ->pluck('days_entitled', 'leave_type')
+            ->pluck('days', 'leave_type')
             ->toArray();
 
         $currentYear = now()->year;
@@ -147,20 +157,20 @@ class LeaveSettingsController extends Controller
             $deptOverrides = DB::table('leave_entitlements')
                 ->where('scope_type', 'department')
                 ->where('scope_id', $emp->department_id)
-                ->pluck('days_entitled', 'leave_type')
+                ->pluck('days', 'leave_type')
                 ->toArray();
 
             $used = DB::table('leave_requests')
                 ->where('employee_id', $emp->id)
                 ->where('status', 'approved')
                 ->whereYear('start_date', $currentYear)
-                ->select('leave_type', DB::raw('SUM(days_requested) as total'))
+                ->select('leave_type', DB::raw('SUM(total_days) as total'))
                 ->groupBy('leave_type')
                 ->pluck('total', 'leave_type')
                 ->toArray();
 
             $empBalances = [];
-            foreach ($leaveTypes as $type) {
+            foreach (array_keys($leaveTypes) as $type) {
                 $entitled = $deptOverrides[$type] ?? $globalOverrides[$type] ?? ($systemDefaults[$type] ?? 0);
                 $usedDays = $used[$type] ?? 0;
                 $empBalances[$type] = [
@@ -172,7 +182,7 @@ class LeaveSettingsController extends Controller
             $balances[$emp->id] = $empBalances;
         }
 
-        return view('admin.leave-settings.entitlements', compact('tab', 'leaveTypes', 'employees', 'balances', 'search'));
+        return view('admin.leave-settings.entitlements', compact('tab', 'leaveTypes', 'employees', 'balances', 'search', 'policies'));
     }
 
     public function updatePolicy(Request $request)
@@ -196,15 +206,17 @@ class LeaveSettingsController extends Controller
             'leave_type' => $validated['leave_type'],
         ]);
 
-        return redirect()->route('admin.leave-entitlements.index', ['tab' => 'policies'])
+        return redirect()->route('admin.leave-entitlements', ['tab' => 'policies'])
             ->with('success', 'Leave policy updated.');
     }
 
     private function getLeaveTypes(): array
     {
-        $defaults = array_keys(config('hrms.leave_entitlements', []));
-        // Also fetch any custom types from the DB
-        $custom = DB::table('leave_type_labels')->pluck('leave_type')->toArray();
-        return array_unique(array_merge($defaults, $custom));
+        $types = config('hrms.leave_entitlements', []);
+        $labels = [];
+        foreach ($types as $key => $days) {
+            $labels[$key] = ucwords(str_replace('_', ' ', $key));
+        }
+        return $labels;
     }
 }

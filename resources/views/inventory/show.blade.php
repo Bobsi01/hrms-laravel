@@ -19,7 +19,7 @@
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
     <div class="card card-body">
         <div class="text-sm text-slate-500 mb-1">Current Stock</div>
-        @php $qty = $item->quantity_on_hand ?? 0; $reorder = $item->reorder_level ?? 0; @endphp
+        @php $qty = $item->qty_on_hand ?? 0; $reorder = $item->reorder_level ?? 0; @endphp
         <div class="text-3xl font-bold {{ $qty <= 0 ? 'text-red-600' : ($qty <= $reorder ? 'text-amber-600' : 'text-emerald-600') }}">
             {{ number_format($qty) }}
         </div>
@@ -32,7 +32,7 @@
     </div>
     <div class="card card-body">
         <div class="text-sm text-slate-500 mb-1">Stock Value</div>
-        <div class="text-3xl font-bold text-slate-900">₱{{ number_format(($item->quantity_on_hand ?? 0) * ($item->cost_price ?? 0), 2) }}</div>
+        <div class="text-3xl font-bold text-slate-900">₱{{ number_format(($item->qty_on_hand ?? 0) * ($item->cost_price ?? 0), 2) }}</div>
         <div class="text-xs text-slate-400">Based on cost price</div>
     </div>
 </div>

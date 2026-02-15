@@ -42,7 +42,7 @@
                     <tr>
                         <td>
                             <div class="font-medium">{{ $emp->last_name }}, {{ $emp->first_name }}</div>
-                            <div class="text-xs text-slate-400">{{ $emp->department->name ?? '—' }}</div>
+                            <div class="text-xs text-slate-400">{{ $emp->department_name ?? '—' }}</div>
                         </td>
                         @foreach($leaveTypes as $type => $label)
                         @php
@@ -62,7 +62,7 @@
                     @endforelse
                 </tbody>
             </table>
-            @if($employees->hasPages())
+            @if($employees instanceof \Illuminate\Pagination\AbstractPaginator && $employees->hasPages())
             <div class="mt-4">{{ $employees->appends(request()->query())->links() }}</div>
             @endif
         </div>

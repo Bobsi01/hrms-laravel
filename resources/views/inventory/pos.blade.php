@@ -23,10 +23,10 @@
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3" id="productGrid">
                     <template x-for="item in products" :key="item.id">
                         <button @click="addToCart(item)" class="border border-slate-200 rounded-lg p-3 text-left hover:border-indigo-300 hover:bg-indigo-50/50 transition-colors"
-                            :class="{'opacity-50 cursor-not-allowed': item.quantity_on_hand <= 0}">
+                            :class="{'opacity-50 cursor-not-allowed': item.qty_on_hand <= 0}">
                             <div class="font-medium text-sm text-slate-900 truncate" x-text="item.name"></div>
                             <div class="text-xs text-slate-400 mt-0.5" x-text="'₱' + Number(item.unit_price).toFixed(2)"></div>
-                            <div class="text-xs mt-1" :class="item.quantity_on_hand > 0 ? 'text-emerald-600' : 'text-red-500'" x-text="'Stock: ' + item.quantity_on_hand"></div>
+                            <div class="text-xs mt-1" :class="item.qty_on_hand > 0 ? 'text-emerald-600' : 'text-red-500'" x-text="'Stock: ' + item.qty_on_hand"></div>
                         </button>
                     </template>
                 </div>
@@ -129,12 +129,12 @@ function posApp() {
         },
 
         addToCart(item) {
-            if (item.quantity_on_hand <= 0) return;
+            if (item.qty_on_hand <= 0) return;
             const existing = this.cart.find(ci => ci.id === item.id);
             if (existing) {
-                if (existing.qty < item.quantity_on_hand) existing.qty++;
+                if (existing.qty < item.qty_on_hand) existing.qty++;
             } else {
-                this.cart.push({ id: item.id, name: item.name, unit_price: parseFloat(item.unit_price), qty: 1, max: item.quantity_on_hand });
+                this.cart.push({ id: item.id, name: item.name, unit_price: parseFloat(item.unit_price), qty: 1, max: item.qty_on_hand });
             }
         },
 

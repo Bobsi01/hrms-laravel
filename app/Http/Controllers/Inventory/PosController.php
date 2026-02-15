@@ -33,9 +33,9 @@ class PosController extends Controller
         $query = DB::table('inv_items')
             ->leftJoin('inv_categories', 'inv_items.category_id', '=', 'inv_categories.id')
             ->where('inv_items.is_active', true)
-            ->where('inv_items.quantity_on_hand', '>', 0)
+            ->where('inv_items.qty_on_hand', '>', 0)
             ->select('inv_items.id', 'inv_items.sku', 'inv_items.name', 'inv_items.barcode',
-                'inv_items.selling_price', 'inv_items.quantity_on_hand', 'inv_items.category_id',
+                'inv_items.selling_price', 'inv_items.qty_on_hand', 'inv_items.category_id',
                 'inv_categories.name as category_name');
 
         if ($search = $request->input('search')) {
@@ -84,23 +84,24 @@ class PosController extends Controller
 
             $txnId = DB::table('inv_transactions')->insertGetId([
                 'txn_number' => $txnNumber,
+                'txn_type' => 'sale',
                 'subtotal' => $subtotal,
-                'discount' => $discount,
-                'total' => $total,
-                'tendered' => $tendered,
+                'discount_amount' => $discount,
+                'total_amount' => $total,
+                'amount_tendered' => $tendered,
                 'change_amount' => $change,
                 'payment_method' => $validated['payment_method'],
                 'customer_name' => $validated['customer_name'] ?? null,
                 'notes' => $validated['notes'] ?? null,
                 'status' => 'completed',
-                'cashier_id' => auth()->id(),
+                'created_by' => auth()->id(),
+                'transaction_date' => now(),
                 'created_at' => now(),
-                'updated_at' => now(),
             ]);
 
             foreach ($validated['items'] as $lineItem) {
                 DB::table('inv_transaction_items')->insert([
-                    'transaction_id' => $txnId,
+                    'txn_id' => $txnId,
                     'item_id' => $lineItem['id'],
                     'quantity' => $lineItem['quantity'],
                     'unit_price' => $lineItem['price'],
@@ -110,7 +111,7 @@ class PosController extends Controller
 
                 // Deduct stock
                 DB::table('inv_items')->where('id', $lineItem['id'])
-                    ->decrement('quantity_on_hand', $lineItem['quantity']);
+                    ->decrement('qty_on_hand', $lineItem['quantity']);
 
                 // Stock movement
                 DB::table('inv_stock_movements')->insert([
@@ -152,7 +153,7 @@ class PosController extends Controller
     public function transactions(Request $request)
     {
         $query = DB::table('inv_transactions')
-            ->leftJoin('users', 'inv_transactions.cashier_id', '=', 'users.id')
+            ->leftJoin('users', 'inv_transactions.created_by', '=', 'users.id')
             ->select('inv_transactions.*', 'users.full_name as cashier_name');
 
         if ($search = $request->input('search')) {
@@ -192,10 +193,10 @@ class PosController extends Controller
         DB::beginTransaction();
         try {
             // Restore stock
-            $lineItems = DB::table('inv_transaction_items')->where('transaction_id', $txn)->get();
+            $lineItems = DB::table('inv_transaction_items')->where('txn_id', $txn)->get();
             foreach ($lineItems as $li) {
                 DB::table('inv_items')->where('id', $li->item_id)
-                    ->increment('quantity_on_hand', $li->quantity);
+                    ->increment('qty_on_hand', $li->quantity);
 
                 DB::table('inv_stock_movements')->insert([
                     'item_id' => $li->item_id,
@@ -235,46 +236,57 @@ class PosController extends Controller
         $from = $request->input('from', now()->subDays(30)->toDateString());
         $to = $request->input('to', now()->toDateString());
 
-        $data = [];
-
-        if ($tab === 'overview') {
-            $data['totalItems'] = DB::table('inv_items')->where('is_active', true)->count();
-            $data['stockValueCost'] = DB::table('inv_items')->where('is_active', true)
-                ->selectRaw('COALESCE(SUM(cost_price * quantity_on_hand), 0) as val')->value('val');
-            $data['stockValueRetail'] = DB::table('inv_items')->where('is_active', true)
-                ->selectRaw('COALESCE(SUM(selling_price * quantity_on_hand), 0) as val')->value('val');
-            $data['periodSales'] = DB::table('inv_transactions')
+        // Stats for the top cards
+        $stats = [
+            'total_items' => DB::table('inv_items')->where('is_active', true)->count(),
+            'total_value' => DB::table('inv_items')->where('is_active', true)
+                ->selectRaw('COALESCE(SUM(selling_price * qty_on_hand), 0) as val')->value('val'),
+            'expiring_soon' => DB::table('inv_items')->where('is_active', true)
+                ->whereNotNull('expiry_date')
+                ->whereBetween('expiry_date', [now()->toDateString(), now()->addDays(30)->toDateString()])
+                ->count(),
+            'total_transactions' => DB::table('inv_transactions')
                 ->where('status', 'completed')
                 ->whereBetween('created_at', [$from, $to . ' 23:59:59'])
-                ->sum('total');
-            $data['lowStock'] = DB::table('inv_items')->where('is_active', true)
-                ->whereColumn('quantity_on_hand', '<=', 'reorder_level')
-                ->where('quantity_on_hand', '>', 0)->count();
-            $data['outOfStock'] = DB::table('inv_items')->where('is_active', true)
-                ->where('quantity_on_hand', '<=', 0)->count();
+                ->count(),
+        ];
 
+        $topSelling = collect();
+        $categoryValuation = collect();
+        $expiringItems = collect();
+
+        if ($tab === 'overview') {
             // Top 10 selling
-            $data['topSelling'] = DB::table('inv_transaction_items')
-                ->join('inv_transactions', 'inv_transaction_items.transaction_id', '=', 'inv_transactions.id')
+            $topSelling = DB::table('inv_transaction_items')
+                ->join('inv_transactions', 'inv_transaction_items.txn_id', '=', 'inv_transactions.id')
                 ->join('inv_items', 'inv_transaction_items.item_id', '=', 'inv_items.id')
                 ->where('inv_transactions.status', 'completed')
                 ->whereBetween('inv_transactions.created_at', [$from, $to . ' 23:59:59'])
                 ->groupBy('inv_items.id', 'inv_items.name', 'inv_items.sku')
-                ->selectRaw('inv_items.name, inv_items.sku, SUM(inv_transaction_items.quantity) as total_qty, SUM(inv_transaction_items.subtotal) as total_revenue')
+                ->selectRaw('inv_items.name, inv_items.sku, SUM(inv_transaction_items.quantity) as total_qty, SUM(inv_transaction_items.line_total) as total_revenue')
                 ->orderByDesc('total_qty')
                 ->limit(10)
+                ->get();
+
+            // Category valuation
+            $categoryValuation = DB::table('inv_items')
+                ->leftJoin('inv_categories', 'inv_items.category_id', '=', 'inv_categories.id')
+                ->where('inv_items.is_active', true)
+                ->groupBy('inv_categories.id', 'inv_categories.name')
+                ->selectRaw('COALESCE(inv_categories.name, \'Uncategorized\') as category_name, COUNT(*) as item_count, SUM(inv_items.qty_on_hand) as total_units, SUM(inv_items.selling_price * inv_items.qty_on_hand) as total_value')
+                ->orderByDesc('total_value')
                 ->get();
         }
 
         if ($tab === 'expiry') {
-            $data['items'] = DB::table('inv_items')
+            $expiringItems = DB::table('inv_items')
                 ->where('is_active', true)
                 ->whereNotNull('expiry_date')
                 ->orderBy('expiry_date')
                 ->get();
         }
 
-        return view('inventory.reports', compact('tab', 'from', 'to', 'data'));
+        return view('inventory.reports', compact('tab', 'from', 'to', 'stats', 'topSelling', 'categoryValuation', 'expiringItems'));
     }
 
     /**
@@ -296,7 +308,7 @@ class PosController extends Controller
             $query->where('inv_purchase_orders.po_number', 'ilike', "%{$escaped}%");
         }
 
-        $orders = $query->orderByDesc('inv_purchase_orders.created_at')->paginate(20);
+        $purchaseOrders = $query->orderByDesc('inv_purchase_orders.created_at')->paginate(20);
 
         $stats = [
             'total' => DB::table('inv_purchase_orders')->count(),
@@ -305,7 +317,7 @@ class PosController extends Controller
             'received' => DB::table('inv_purchase_orders')->where('status', 'received')->count(),
         ];
 
-        return view('inventory.purchase-orders', compact('orders', 'stats'));
+        return view('inventory.purchase-orders', compact('purchaseOrders', 'stats'));
     }
 
     /**
@@ -462,7 +474,7 @@ class PosController extends Controller
 
                 // Update stock
                 DB::table('inv_items')->where('id', $li->item_id)
-                    ->increment('quantity_on_hand', $qty);
+                    ->increment('qty_on_hand', $qty);
 
                 DB::table('inv_stock_movements')->insert([
                     'item_id' => $li->item_id,

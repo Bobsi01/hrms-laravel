@@ -24,7 +24,7 @@
         </div>
         <div>
             <label class="block text-sm font-medium text-slate-700">Work Days</label>
-            <input type="text" name="work_days" class="input-text mt-1" value="{{ $tpl->work_days ?? old('work_days', 'Mon-Fri') }}" placeholder="Mon-Fri">
+            <input type="text" name="work_days" class="input-text mt-1" value="{{ is_array($tpl->work_days ?? null) ? implode(',', $tpl->work_days) : ($tpl->work_days ?? old('work_days', 'Mon-Fri')) }}" placeholder="Mon-Fri">
         </div>
     </div>
     <div>

@@ -16,12 +16,11 @@ class User extends Authenticatable
     protected $table = 'users';
 
     /**
-     * Laravel expects 'password' column for auth; our DB uses 'password_hash'.
+     * Our DB uses 'password_hash' instead of Laravel's default 'password'.
+     * This tells the Authenticatable trait (getAuthPassword, rehashPasswordIfRequired, etc.)
+     * to use the correct column name.
      */
-    public function getAuthPassword(): string
-    {
-        return $this->password_hash;
-    }
+    protected $authPasswordName = 'password_hash';
 
     protected $fillable = [
         'email',

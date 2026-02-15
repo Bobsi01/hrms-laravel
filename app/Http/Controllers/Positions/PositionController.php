@@ -31,6 +31,8 @@ class PositionController extends Controller
         $canWrite = $this->permissions->userCan('hr_core', 'positions', 'write');
 
         return view('positions.index', compact('positions', 'canWrite'));
+
+        return view('positions.index', compact('positions', 'canWrite'));
     }
 
     public function create()

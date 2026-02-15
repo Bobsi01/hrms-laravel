@@ -40,6 +40,7 @@ class UserController extends Controller
         $stats = [
             'total' => User::count(),
             'active' => User::where('status', 'active')->count(),
+            'inactive' => User::where('status', 'inactive')->count(),
             'admins' => User::where('is_system_admin', true)->count(),
         ];
 

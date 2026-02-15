@@ -39,32 +39,28 @@ class SystemController extends Controller
             ->count('user_id');
 
         // System logs
-        $logStats = [
-            'total' => DB::table('system_logs')->count(),
-            'last24h' => DB::table('system_logs')->where('created_at', '>=', now()->subDay())->count(),
-            'errors' => DB::table('system_logs')
-                ->where('created_at', '>=', now()->subDay())
-                ->where('log_code', 'ilike', '%ERR%')
-                ->count(),
-        ];
+        $logsWeek = DB::table('system_logs')->where('created_at', '>=', now()->subWeek())->count();
 
-        $recentLogs = DB::table('system_logs')
-            ->orderByDesc('created_at')
+        // Recent activity from audit_logs
+        $recentLogs = DB::table('audit_logs')
+            ->leftJoin('users', 'audit_logs.user_id', '=', 'users.id')
+            ->select('audit_logs.*', 'users.full_name as user_name')
+            ->orderByDesc('audit_logs.created_at')
             ->limit(10)
             ->get();
 
-        // PHP info
-        $phpInfo = [
-            'version' => PHP_VERSION,
-            'memory_limit' => ini_get('memory_limit'),
-            'upload_max_filesize' => ini_get('upload_max_filesize'),
-            'post_max_size' => ini_get('post_max_size'),
-            'timezone' => config('app.timezone'),
+        // Consolidated stats for the view
+        $stats = [
+            'db_size' => $dbSize,
+            'active_connections' => $connections->active ?? 0,
+            'idle_connections' => $connections->idle ?? 0,
+            'max_connections' => $connections->max ?? 0,
+            'cache_hit_ratio' => $cacheHit->ratio ?? 0,
+            'active_users' => $activeUsers,
+            'php_version' => PHP_VERSION,
+            'logs_week' => $logsWeek,
         ];
 
-        return view('admin.system.index', compact(
-            'dbSize', 'connections', 'cacheHit', 'activeUsers',
-            'logStats', 'recentLogs', 'phpInfo'
-        ));
+        return view('admin.system.index', compact('stats', 'recentLogs'));
     }
 }

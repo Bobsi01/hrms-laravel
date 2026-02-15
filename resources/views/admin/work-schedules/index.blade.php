@@ -42,7 +42,7 @@
                                 <td>{{ $tpl->time_in ? \Carbon\Carbon::parse($tpl->time_in)->format('h:i A') : '—' }}</td>
                                 <td>{{ $tpl->time_out ? \Carbon\Carbon::parse($tpl->time_out)->format('h:i A') : '—' }}</td>
                                 <td>{{ $tpl->break_minutes ?? '—' }}</td>
-                                <td class="text-xs">{{ $tpl->work_days ?? '—' }}</td>
+                                <td class="text-xs">{{ is_array($tpl->work_days) ? implode(', ', $tpl->work_days) : ($tpl->work_days ?? '—') }}</td>
                                 <td>
                                     @if($tpl->is_active)
                                         <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-100 text-emerald-700">Active</span>
